@@ -6,6 +6,7 @@ format: html
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(here)
 library(lubridate)
 library(RColorBrewer)
 ```
@@ -14,7 +15,7 @@ library(RColorBrewer)
 ## Define path and filenames
 
 ```{r}
-path_raw <- "data/raw"
+path_raw <- here("data","raw")
 
 sites_csv <- "site.csv"
 
@@ -32,18 +33,19 @@ lemmings_csv <- "ASDN_Daily_pred_lemm.csv"
 
 ## Question 1: Does the snow amount & timing impact the number of eggs? Is it species dependant?
 
+Since the observations are made a different time, we will aggragate the data by month to have an common denominator in time.
+
 ### Summarize the nests table
 
 Read the nest data in
 
 ```{r}
-nests_data <- read_csv(file.path(path_raw, nests_csv))
+nests_data <- read_csv(here(path_raw, nests_csv))
 
 glimpse(nests_data)
 ```
 
 Yeah! `Date_found` is already in date format! We can thus directly aggregate the data by months:
-
 
 ```{r}
 nests_month <- nests_data %>%
@@ -62,7 +64,7 @@ snowcover_data <- read_csv(file.path(path_raw, snowcover_csv))
 glimpse(snowcover_data)
 ```
 
-The Date is stored as a character we thus first we need to transform the date in date format before computing the monthly aggregate:
+The Date is stored as a character :/, we thus first we need to transform the date in date format before computing the monthly aggregate:
 
 ```{r}
 snowcover_data_fixed <- snowcover_data %>%
@@ -99,7 +101,7 @@ snowcover_data_fixed <- snowcover_data %>%
 
 ::: {.callout-note}
 ## Fun fact
-You might be wondering why I started with `as_date()` instead of directly using `dmy()`. Well turns out that while preparing this exercise I discovered a bug in this `lubridate` function!! See <https://github.com/tidyverse/lubridate/issues/1161>
+You might be wondering why I started with `as_date()` instead of directly using `dmy()`. Well turns out that while preparing this exercise I discovered a bug in this `lubridate` function!! See <https://github.com/tidyverse/lubridate/issues/1161> for more information.
 :::
 
 
@@ -118,6 +120,8 @@ snowcover_month <- snowcover_data_fixed %>%
 
  
 ### Join the snow cover and nest tables
+
+Since now we have the months in common, we can use them to join our two datasets:
 
 ```{r}
 nests_snow_month <- nests_month %>%
@@ -180,13 +184,14 @@ eggs_sum <- eggs_data %>%
   summarize(n_egg = max(Egg_num)) %>%
   ungroup()
 ```
-
+Then we can join with the nest table to bring the species information:
 
 ```{r}
 nest_species <- eggs_sum %>%
   left_join(nests_data, join_by(Site, Year, Nest_ID))
 ```
 
+Now we can group by species:
 
 ```{r}
 nest_species_avg <- nest_species %>%
@@ -197,11 +202,14 @@ nest_species_avg %>%
   arrange(desc(avg_egg_numb))
 ```
 
+Finally it would be better to have the name of the species and not only the 4-letter acronym:
+
 ```{r}
 nest_species_avg <- nest_species_avg %>%
   left_join(species_data, join_by(Species==Code))
 ```
 
+Let's put it all together:
 
 ```{r}
 nest_species_avg %>% 
